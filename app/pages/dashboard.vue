@@ -1,14 +1,12 @@
 <template>
-  <!-- 1. Layout Wrapper (Hyamule blank page fix hoil) -->
   <q-layout view="hHh Lpr lFf">
     <q-page-container>
       <q-page padding class="bg-grey-1">
         
         <q-card flat bordered class="shadow-2">
-          <!-- Lead Filters Section -->
+          <!-- Filters Section -->
           <q-card-section>
             <div class="row q-col-gutter-sm items-center">
-              <!-- Small Inputs (Sir's requirement) -->
               <div class="col-auto">
                 <q-input v-model="country" label="Country" dense outlined bg-color="white" style="width: 130px" />
               </div>
@@ -19,7 +17,6 @@
                 <q-input v-model="keyword" label="Keyword" dense outlined bg-color="white" style="width: 130px" />
               </div>
               <div class="col-auto">
-                <!-- Small Button -->
                 <q-btn label="Generate Leads" color="primary" dense size="md" class="q-px-md" @click="fetchLeads" />
               </div>
             </div>
@@ -27,33 +24,44 @@
 
           <!-- Leads Data Table -->
           <q-card-section class="q-pt-none">
-            <q-table
-              :rows="leads"
-              :columns="columns"
-              row-key="id"
-              v-model:pagination="pagination"
-              flat
-              bordered
-              dense
-            >
-              <!-- Status Column Styling -->
-              <template v-slot:body-cell-status="props">
+            <q-table :rows="leads" :columns="columns" row-key="id" v-model:pagination="pagination" flat bordered dense>
+              
+              <!-- 1. Source URL Column (Click to Open) -->
+              <template v-slot:body-cell-source="props">
                 <q-td :props="props">
-                  <q-badge :color="getStatusColor(props.value)">
-                    {{ props.value }}
-                  </q-badge>
+                  <q-btn 
+                    v-if="props.value && props.value !== 'N/A'" 
+                    flat 
+                    dense 
+                    color="blue-8" 
+                    icon="launch" 
+                    label="Visit" 
+                    size="sm"
+                    @click="openSource(props.value)"
+                  />
+                  <span v-else class="text-grey-5">N/A</span>
                 </q-td>
               </template>
 
-              <!-- Extra Small Buttons (Sir's requirement) -->
-              <template v-slot:body-cell-actions="props">
-                <q-td :props="props" class="q-gutter-xs">
-                  <q-btn color="positive" size="xs" dense label="Contacted" @click="markContacted(props.row)" />
-                  <q-btn color="orange" size="xs" dense label="Ignore" @click="markIgnored(props.row)" />
-                  <q-btn color="negative" size="xs" dense icon="delete" @click="deleteLead(props.row)" />
-                  <q-btn color="info" size="xs" dense icon="email" @click="sendEmail(props.row)" />
+              <!-- 2. Status Badge -->
+              <template v-slot:body-cell-status="props">
+                <q-td :props="props">
+                  <q-badge :color="getStatusColor(props.value)">{{ props.value }}</q-badge>
                 </q-td>
               </template>
+
+              <!-- 3. Actions (With Email Button) -->
+              <template v-slot:body-cell-actions="props">
+                <q-td :props="props" class="q-gutter-xs text-center">
+                  <q-btn color="positive" size="xs" dense label="Contacted" @click="markContacted(props.row)" />
+                  <q-btn color="orange" size="xs" dense label="Ignore" @click="markIgnored(props.row)" />
+                  <q-btn color="info" size="xs" dense icon="email" @click="sendEmail(props.row)">
+                    <q-tooltip>Send Email</q-tooltip>
+                  </q-btn>
+                  <q-btn color="negative" size="xs" dense icon="delete" @click="deleteLead(props.row)" />
+                </q-td>
+              </template>
+
             </q-table>
           </q-card-section>
         </q-card>
@@ -72,15 +80,13 @@ const city = ref('')
 const keyword = ref('')
 const leads = ref([])
 
-// 2. Pagination: Default 50 rows (Sir's requirement)
-const pagination = ref({
-  page: 1,
-  rowsPerPage: 50 
-})
+const pagination = ref({ page: 1, rowsPerPage: 50 })
 
 const columns = [
   { name: 'company_name', label: 'Company', field: 'company_name', align: 'left', sortable: true },
   { name: 'location', label: 'Location', field: 'location', align: 'left' },
+  // 'field' चे नाव तुमच्या API नुसार 'source_url' ठेवले आहे
+  { name: 'source', label: 'Source', field: 'source_url', align: 'left' }, 
   { name: 'contact_email', label: 'Email', field: 'contact_email', align: 'left' },
   { name: 'status', label: 'Status', field: 'status', align: 'center', sortable: true },
   { name: 'actions', label: 'Actions', align: 'center' }
@@ -96,29 +102,38 @@ const fetchLeads = async () => {
   try {
     let searchQuery = `${country.value} ${city.value} ${keyword.value}`.trim()
     const res = await axios.get(`http://localhost:8000/api/leads/`, {
-      params: {
-        page: pagination.value.page,
-        limit: pagination.value.rowsPerPage,
-        search: searchQuery
-      }
+      params: { search: searchQuery }
     })
     leads.value = res.data
   } catch (err) {
     console.error('Fetch error:', err)
-    // Testing sathi dummy data jar API band asel tar
-    leads.value = [{ id: 1, company_name: 'Test', location: 'Pune', status: 'new' }]
+    // Testing dummy data
+    leads.value = [{ id: 1, company_name: 'Test Co', location: 'USA', source_url: 'https://example.com', contact_email: 'test@mail.com', status: 'new' }]
   }
 }
 
-onMounted(() => {
-  fetchLeads()
-})
+const openSource = (url) => {
+  if (url) window.open(url, '_blank')
+}
 
-const markContacted = async (lead) => { lead.status = 'contacted' }
-const markIgnored = async (lead) => { lead.status = 'ignored' }
-const deleteLead = async (lead) => { leads.value = leads.value.filter(l => l.id !== lead.id) }
-const sendEmail = async (lead) => { alert('Email Sent!') }
+const sendEmail = async (lead) => {
+  try {
+    const res = await axios.post(`http://localhost:8000/api/send-email/${lead.id}/`)
+    alert(res.data.message)
+  } catch (err) {
+    console.error("Error:", err.response.data)
+    alert(err.response.data.error)
+  }
+}
+
+const markContacted = (lead) => { lead.status = 'contacted' }
+const markIgnored = (lead) => { lead.status = 'ignored' }
+const deleteLead = (lead) => { leads.value = leads.value.filter(l => l.id !== lead.id) }
+
+onMounted(() => { fetchLeads() })
 </script>
+
+
 
 <style scoped>
 /* Quasar vapartana extra CSS chi garaj kami lagte */
