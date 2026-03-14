@@ -85,7 +85,6 @@ const pagination = ref({ page: 1, rowsPerPage: 50 })
 const columns = [
   { name: 'company_name', label: 'Company', field: 'company_name', align: 'left', sortable: true },
   { name: 'location', label: 'Location', field: 'location', align: 'left' },
-  // 'field' चे नाव तुमच्या API नुसार 'source_url' ठेवले आहे
   { name: 'source', label: 'Source', field: 'source_url', align: 'left' }, 
   { name: 'contact_email', label: 'Email', field: 'contact_email', align: 'left' },
   { name: 'status', label: 'Status', field: 'status', align: 'center', sortable: true },
@@ -101,7 +100,7 @@ const getStatusColor = (status) => {
 const fetchLeads = async () => {
   try {
     let searchQuery = `${country.value} ${city.value} ${keyword.value}`.trim()
-    const res = await axios.get(`http://localhost:8000/api/leads/`, {
+    const res = await axios.get(`https://archanashinde-leadgen-backend.hf.space/api/leads/`, {
       params: { search: searchQuery }
     })
     leads.value = res.data
@@ -118,7 +117,7 @@ const openSource = (url) => {
 
 const sendEmail = async (lead) => {
   try {
-    const res = await axios.post(`http://localhost:8000/api/send-email/${lead.id}/`)
+    const res = await axios.post(`https://archanashinde-leadgen-backend.hf.space/api/send-email/${lead.id}/`)
     alert(res.data.message)
   } catch (err) {
     console.error("Error:", err.response.data)
@@ -136,7 +135,6 @@ onMounted(() => { fetchLeads() })
 
 
 <style scoped>
-/* Quasar vapartana extra CSS chi garaj kami lagte */
 .q-table__container {
   background-color: #ffffff;
 }
